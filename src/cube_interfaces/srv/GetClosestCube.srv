@@ -1,0 +1,4 @@
+geometry_msgs/Pose target_pose
+---
+string cube_id
+bool found
