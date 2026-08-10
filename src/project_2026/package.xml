@@ -1,21 +1,34 @@
 <?xml version="1.0"?>
-<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd"
+    schematypens="http://www.w3.org/2001/XMLSchema"?>
+
 <package format="3">
+
   <name>project_2026</name>
+
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+
+  <description>Cube sorting project</description>
+
   <maintainer email="lazarmilic2@gmail.com">dexter</maintainer>
-  <license>TODO: License declaration</license>
+
+  <license>TODO</license>
+
+  <depend>cube_interfaces</depend>
+  <depend>tf2_ros</depend>
+  <depend>tf2_geometry_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>control_msgs</depend>
+  <depend>trajectory_msgs</depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
   <test_depend>ament_pep257</test_depend>
   <test_depend>python3-pytest</test_depend>
 
-  <depend>cube_interfaces</depend>
-
-
   <export>
     <build_type>ament_python</build_type>
   </export>
+
 </package>

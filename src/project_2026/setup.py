@@ -29,6 +29,13 @@ setup(
     entry_points={
         'console_scripts': [
             'closest_cube = project_2026.closest_cube:main',
+            'camera_viewer = project_2026.camera_viewer:main',
+            'cube_detector = project_2026.cube_detector:main',
+            'auto_scan = project_2026.auto_scan:main',
+            'move_test = project_2026.move_test:main',
+            'cube_order = project_2026.cube_order:main',
+            'move_to_cube = project_2026.move_to_cube:main',
+            'gripper_test = project_2026.gripper_test:main',
         ],
     },
 )
