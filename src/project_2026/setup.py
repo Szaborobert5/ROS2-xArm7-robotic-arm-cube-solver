@@ -36,6 +36,8 @@ setup(
             'cube_order = project_2026.cube_order:main',
             'move_to_cube = project_2026.move_to_cube:main',
             'gripper_test = project_2026.gripper_test:main',
+            'surface_detector = project_2026.surface_detector:main',
+            'cartesian_drop_test = project_2026.cartesian_drop_test:main',
         ],
     },
 )

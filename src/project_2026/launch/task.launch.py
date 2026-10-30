@@ -510,10 +510,32 @@ def generate_launch_description():
         output="screen"
     )
 
+    surface_detector = Node(
+        package="project_2026",
+        executable="surface_detector",
+        name="surface_detector",
+        output="screen",
+        parameters=[
+            {"use_sim_time": LaunchConfiguration("use_sim_time")}
+        ]
+    )
+
+    cube_detector = Node(
+        package="project_2026",
+        executable="cube_detector",
+        name="cube_detector",
+        output="screen",
+        parameters=[
+            {"use_sim_time": LaunchConfiguration("use_sim_time")}
+        ]
+    )
+
     return LaunchDescription(declared_args + [
         gazebo_launch,
         spawn_action,
         inject_action,
         pose_bridge,
-        closest_cube_service
+        closest_cube_service,
+        surface_detector,
+        cube_detector
     ])

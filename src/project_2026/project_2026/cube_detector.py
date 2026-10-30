@@ -19,6 +19,7 @@ import numpy as np
 class CubeDetector(Node):
 
     def __init__(self):
+
         super().__init__('cube_detector')
 
         self.bridge = CvBridge()
@@ -34,10 +35,11 @@ class CubeDetector(Node):
             self
         )
 
-        # Frame depth kamere
-        self.camera_frame = 'camera_depth_optical_frame'
+        # =====================================================
+        # FRAME-OVI
+        # =====================================================
 
-        # Koordinatni sistem robota
+        self.camera_frame = 'camera_depth_optical_frame'
         self.robot_frame = 'link_base'
 
         # =====================================================
@@ -99,6 +101,10 @@ class CubeDetector(Node):
             '/detected_cubes',
             10
         )
+
+        # =====================================================
+        # START MESSAGE
+        # =====================================================
 
         self.get_logger().info(
             '========================================'
@@ -168,16 +174,16 @@ class CubeDetector(Node):
 
             return
 
-        # -----------------------------------------------------
-        # Provera da li imamo depth
-        # -----------------------------------------------------
+        # =====================================================
+        # PROVERA DEPTH
+        # =====================================================
 
         if self.latest_depth is None:
             return
 
-        # -----------------------------------------------------
-        # Provera CameraInfo
-        # -----------------------------------------------------
+        # =====================================================
+        # PROVERA CAMERA INFO
+        # =====================================================
 
         if self.camera_info is None:
             return
@@ -297,6 +303,7 @@ class CubeDetector(Node):
         )
 
         # Maksimalno 5 kockica
+
         detections = detections[:5]
 
         # =====================================================
@@ -335,8 +342,8 @@ class CubeDetector(Node):
 
         for detection in detections:
 
-            # Ako TF nije uspeo za ovu kockicu
-            # nemoj je slati u /detected_cubes
+            # Ako TF nije uspeo,
+            # nemoj slati kockicu
 
             if (
                 'base_X' not in detection or
@@ -351,11 +358,7 @@ class CubeDetector(Node):
 
             cube_msg.color = detection['color']
 
-            # =================================================
-            # BITNO:
-            #
-            # OVE KOORDINATE SU U link_base FRAME-U
-            # =================================================
+            # Koordinate su u link_base frame-u
 
             cube_msg.x = detection['base_X']
             cube_msg.y = detection['base_Y']
@@ -405,9 +408,9 @@ class CubeDetector(Node):
         detections
     ):
 
-        # -----------------------------------------------------
-        # Morphological filtering
-        # -----------------------------------------------------
+        # =====================================================
+        # MORPHOLOGICAL FILTERING
+        # =====================================================
 
         kernel = np.ones(
             (5, 5),
@@ -426,9 +429,9 @@ class CubeDetector(Node):
             kernel
         )
 
-        # -----------------------------------------------------
-        # Contours
-        # -----------------------------------------------------
+        # =====================================================
+        # CONTOURS
+        # =====================================================
 
         contours, _ = cv2.findContours(
             mask,
@@ -436,9 +439,9 @@ class CubeDetector(Node):
             cv2.CHAIN_APPROX_SIMPLE
         )
 
-        # -----------------------------------------------------
-        # Process contours
-        # -----------------------------------------------------
+        # =====================================================
+        # PROCESS CONTOURS
+        # =====================================================
 
         for contour in contours:
 
@@ -464,9 +467,9 @@ class CubeDetector(Node):
             if aspect_ratio > 2.5:
                 continue
 
-            # -------------------------------------------------
-            # Centroid
-            # -------------------------------------------------
+            # =================================================
+            # CENTROID
+            # =================================================
 
             M = cv2.moments(
                 contour
@@ -488,15 +491,12 @@ class CubeDetector(Node):
                 'color': color_name,
 
                 'cx': cx,
-
                 'cy': cy,
 
                 'x': x,
-
                 'y': y,
 
                 'w': w,
-
                 'h': h,
 
                 'area': area
@@ -504,6 +504,7 @@ class CubeDetector(Node):
 
     # =========================================================
     # PROCESS DETECTION
+    # ROBUST DEPTH VERSION
     # =========================================================
 
     def process_detection(
@@ -513,7 +514,6 @@ class CubeDetector(Node):
     ):
 
         cube_id = detection['id']
-
         color = detection['color']
 
         cx = detection['cx']
@@ -540,76 +540,201 @@ class CubeDetector(Node):
             cy >= depth_height
         ):
 
+            self.get_logger().warn(
+                f'Cube #{cube_id}: '
+                'centar van depth slike.'
+            )
+
             return
 
         # =====================================================
-        # DEPTH WINDOW
+        # INNER BOUNDING BOX
+        #
+        # Koristimo unutrasnjih 60%
+        # bounding box-a.
         # =====================================================
 
-        window_size = 5
+        inner_x1 = int(
+            x + 0.20 * w
+        )
 
-        x1 = max(
+        inner_x2 = int(
+            x + 0.80 * w
+        )
+
+        inner_y1 = int(
+            y + 0.20 * h
+        )
+
+        inner_y2 = int(
+            y + 0.80 * h
+        )
+
+        # =====================================================
+        # CLAMP
+        # =====================================================
+
+        inner_x1 = max(
             0,
-            cx - window_size
+            min(
+                inner_x1,
+                depth_width - 1
+            )
         )
 
-        x2 = min(
-            depth_width,
-            cx + window_size + 1
-        )
-
-        y1 = max(
+        inner_x2 = max(
             0,
-            cy - window_size
+            min(
+                inner_x2,
+                depth_width
+            )
         )
 
-        y2 = min(
-            depth_height,
-            cy + window_size + 1
+        inner_y1 = max(
+            0,
+            min(
+                inner_y1,
+                depth_height - 1
+            )
         )
 
-        depth_window = self.latest_depth[
-            y1:y2,
-            x1:x2
+        inner_y2 = max(
+            0,
+            min(
+                inner_y2,
+                depth_height
+            )
+        )
+
+        if (
+            inner_x2 <= inner_x1 or
+            inner_y2 <= inner_y1
+        ):
+
+            self.get_logger().warn(
+                f'Cube #{cube_id}: '
+                'los bounding box.'
+            )
+
+            return
+
+        # =====================================================
+        # DEPTH REGION
+        # =====================================================
+
+        depth_region = self.latest_depth[
+            inner_y1:inner_y2,
+            inner_x1:inner_x2
         ]
 
         # =====================================================
         # VALID DEPTH
+        #
+        # 0.05m - 3m
         # =====================================================
 
-        valid_depth = depth_window[
-            np.isfinite(depth_window) &
-            (depth_window > 0.0)
+        valid_depth = depth_region[
+            np.isfinite(depth_region) &
+            (depth_region > 0.05) &
+            (depth_region < 3.0)
         ]
 
-        if len(valid_depth) == 0:
+        if len(valid_depth) < 10:
 
             self.get_logger().warn(
                 f'Cube #{cube_id} ({color}): '
-                'nema validnog depth podatka.'
+                f'nema dovoljno validnih depth '
+                f'podataka: {len(valid_depth)}'
             )
 
             return
+
+        # =====================================================
+        # REMOVE EXTREME OUTLIERS
+        # =====================================================
+
+        p05 = np.percentile(
+            valid_depth,
+            5
+        )
+
+        p80 = np.percentile(
+            valid_depth,
+            80
+        )
+
+        filtered_depth = valid_depth[
+            (valid_depth >= p05) &
+            (valid_depth <= p80)
+        ]
+
+        if len(filtered_depth) < 10:
+
+            filtered_depth = valid_depth
 
         # =====================================================
         # MEDIAN DEPTH
         # =====================================================
 
         Z = float(
-            np.median(valid_depth)
+            np.median(
+                filtered_depth
+            )
+        )
+
+        # =====================================================
+        # DEPTH STATISTICS
+        # =====================================================
+
+        depth_min = float(
+            np.min(
+                filtered_depth
+            )
+        )
+
+        depth_max = float(
+            np.max(
+                filtered_depth
+            )
+        )
+
+        depth_std = float(
+            np.std(
+                filtered_depth
+            )
         )
 
         # =====================================================
         # CAMERA INTRINSICS
         # =====================================================
 
-        fx = self.camera_info.k[0]
+        fx = float(
+            self.camera_info.k[0]
+        )
 
-        fy = self.camera_info.k[4]
+        fy = float(
+            self.camera_info.k[4]
+        )
 
-        camera_cx = self.camera_info.k[2]
+        camera_cx = float(
+            self.camera_info.k[2]
+        )
 
-        camera_cy = self.camera_info.k[5]
+        camera_cy = float(
+            self.camera_info.k[5]
+        )
+
+        if (
+            fx <= 0 or
+            fy <= 0
+        ):
+
+            self.get_logger().warn(
+                f'Cube #{cube_id}: '
+                'nevalidni camera intrinsics.'
+            )
+
+            return
 
         # =====================================================
         # CAMERA XYZ
@@ -627,8 +752,6 @@ class CubeDetector(Node):
             / fy
         )
 
-        # Sacuvaj Camera XYZ
-
         detection['X'] = X
         detection['Y'] = Y
         detection['Z'] = Z
@@ -644,13 +767,13 @@ class CubeDetector(Node):
         )
 
         point_camera.header.stamp = (
-            self.get_clock().now().to_msg()
+            self.get_clock()
+            .now()
+            .to_msg()
         )
 
         point_camera.point.x = X
-
         point_camera.point.y = Y
-
         point_camera.point.z = Z
 
         # =====================================================
@@ -658,10 +781,6 @@ class CubeDetector(Node):
         # =====================================================
 
         try:
-
-            # -------------------------------------------------
-            # Provera da li transformacija postoji
-            # -------------------------------------------------
 
             if not self.tf_buffer.can_transform(
                 self.robot_frame,
@@ -677,42 +796,48 @@ class CubeDetector(Node):
 
                 return
 
-            # -------------------------------------------------
-            # Uzmi transformaciju
-            # -------------------------------------------------
+            # =================================================
+            # LOOKUP TRANSFORM
+            # =================================================
 
-            transform = self.tf_buffer.lookup_transform(
-                self.robot_frame,
-                self.camera_frame,
-                rclpy.time.Time(),
-                timeout=rclpy.duration.Duration(
-                    seconds=0.1
+            transform = (
+                self.tf_buffer.lookup_transform(
+                    self.robot_frame,
+                    self.camera_frame,
+                    rclpy.time.Time(),
+                    timeout=rclpy.duration.Duration(
+                        seconds=0.2
+                    )
                 )
             )
 
-            # -------------------------------------------------
-            # Transformacija PointStamped
-            # -------------------------------------------------
+            # =================================================
+            # TRANSFORM POINT
+            # =================================================
 
             point_base = do_transform_point(
                 point_camera,
                 transform
             )
 
-            # -------------------------------------------------
+            # =================================================
             # BASE XYZ
-            # -------------------------------------------------
+            # =================================================
 
-            base_X = point_base.point.x
+            base_X = (
+                point_base.point.x
+            )
 
-            base_Y = point_base.point.y
+            base_Y = (
+                point_base.point.y
+            )
 
-            base_Z = point_base.point.z
+            base_Z = (
+                point_base.point.z
+            )
 
             detection['base_X'] = base_X
-
             detection['base_Y'] = base_Y
-
             detection['base_Z'] = base_Z
 
         except Exception as e:
@@ -725,7 +850,7 @@ class CubeDetector(Node):
             return
 
         # =====================================================
-        # DRAW RECTANGLE
+        # DRAW BOUNDING BOX
         # =====================================================
 
         cv2.rectangle(
@@ -734,6 +859,18 @@ class CubeDetector(Node):
             (x + w, y + h),
             (255, 255, 255),
             2
+        )
+
+        # =====================================================
+        # DRAW DEPTH REGION
+        # =====================================================
+
+        cv2.rectangle(
+            frame,
+            (inner_x1, inner_y1),
+            (inner_x2, inner_y2),
+            (0, 255, 255),
+            1
         )
 
         # =====================================================
@@ -755,7 +892,13 @@ class CubeDetector(Node):
         cv2.putText(
             frame,
             f'#{cube_id} {color}',
-            (x, max(y - 10, 20)),
+            (
+                x,
+                max(
+                    y - 10,
+                    20
+                )
+            ),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.6,
             (255, 255, 255),
@@ -772,15 +915,13 @@ class CubeDetector(Node):
             f'{X:.3f}, '
             f'{Y:.3f}, '
             f'{Z:.3f}',
-
-            (x, y + h + 20),
-
+            (
+                x,
+                y + h + 20
+            ),
             cv2.FONT_HERSHEY_SIMPLEX,
-
             0.42,
-
             (255, 255, 255),
-
             1
         )
 
@@ -794,34 +935,96 @@ class CubeDetector(Node):
             f'{base_X:.3f}, '
             f'{base_Y:.3f}, '
             f'{base_Z:.3f}',
-
-            (x, y + h + 40),
-
+            (
+                x,
+                y + h + 40
+            ),
             cv2.FONT_HERSHEY_SIMPLEX,
-
             0.42,
-
             (255, 255, 255),
-
             1
         )
 
         # =====================================================
-        # TERMINAL
+        # DEPTH
+        # =====================================================
+
+        cv2.putText(
+            frame,
+            f'Depth: {Z:.3f}m',
+            (
+                x,
+                y + h + 60
+            ),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.42,
+            (255, 255, 255),
+            1
+        )
+
+        # =====================================================
+        # TERMINAL OUTPUT
         # =====================================================
 
         self.get_logger().info(
-            f'Cube #{cube_id}: {color} | '
+            '----------------------------------------'
+        )
 
-            f'Camera XYZ=('
-            f'{X:.3f}, '
-            f'{Y:.3f}, '
-            f'{Z:.3f}) | '
+        self.get_logger().info(
+            f'Cube #{cube_id} | {color}'
+        )
 
-            f'link_base XYZ=('
-            f'{base_X:.3f}, '
-            f'{base_Y:.3f}, '
-            f'{base_Z:.3f})'
+        self.get_logger().info(
+            f'RGB center = '
+            f'({cx}, {cy})'
+        )
+
+        self.get_logger().info(
+            f'Bounding box = '
+            f'x={x}, '
+            f'y={y}, '
+            f'w={w}, '
+            f'h={h}'
+        )
+
+        self.get_logger().info(
+            f'Depth region = '
+            f'({inner_x1}:{inner_x2}, '
+            f'{inner_y1}:{inner_y2})'
+        )
+
+        self.get_logger().info(
+            f'Depth = '
+            f'{Z:.4f} m'
+        )
+
+        self.get_logger().info(
+            f'Depth range = '
+            f'{depth_min:.4f} - '
+            f'{depth_max:.4f} m'
+        )
+
+        self.get_logger().info(
+            f'Depth std = '
+            f'{depth_std:.4f} m'
+        )
+
+        self.get_logger().info(
+            f'Camera XYZ = '
+            f'({X:.4f}, '
+            f'{Y:.4f}, '
+            f'{Z:.4f})'
+        )
+
+        self.get_logger().info(
+            f'link_base XYZ = '
+            f'({base_X:.4f}, '
+            f'{base_Y:.4f}, '
+            f'{base_Z:.4f})'
+        )
+
+        self.get_logger().info(
+            '----------------------------------------'
         )
 
     # =========================================================
@@ -863,4 +1066,5 @@ def main(args=None):
 
 
 if __name__ == '__main__':
+
     main()

@@ -19,7 +19,11 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/CubeDetection.msg"
   "msg/CubeDetectionArray.msg"
 
+  "msg/SurfaceDetection.msg"
+  "msg/SurfaceDetectionArray.msg"
+
   "srv/GetClosestCube.srv"
+  "srv/DetectSurface.srv"
 
   DEPENDENCIES
     geometry_msgs
