@@ -50,6 +50,11 @@ One of the challenges was implementing MoveIt2 to the code. The code isn't ideal
 
 ## Video
 
+<p align="center">
+  <img src="./video_dem.gif" width="45%" alt="xArm7 cube sorting demo">
+</p>
+
+
 ## Installation
 
 ### 1. Clone the repo
