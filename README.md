@@ -2,7 +2,7 @@
 
 This project implements an autonomous cube sorting system using a UFactory xArm7 robotic arm in a ROS 2 and Gazebo simulation environment.
 
-Camera detects cubes using computer vision, identifies their positions,colors and performs pick-and-place operations to sort them in the right color square.
+The camera detects cubes using computer vision, identifies their positions, colors and performs pick-and-place operations to sort them in the right color square.
 
 This project was developed in ROS 2 and simulated in Gazebo.
 
@@ -21,16 +21,16 @@ This project was developed in ROS 2 and simulated in Gazebo.
 
 ## The process
 
-I started by figuring out how could get the robot to the work surface. Then, I had to figure out how could I detect the cubes, their positions and color. After that, I had to make moving phases for the robot(go down, pick up, go up go the right square).
+I started by figuring out how could I get the robot to the work surface. Then, I had to figure out how could I detect the cubes, their positions and color. After that, I had to make moving phases for the robot(go down, pick up, go up and go the right square).
 
-I also had to detect the color of the surface. The positions of the surfaces was always fixed, but the colors were never the same. For this obstacle I used openCV 
+I also had to detect the color of the surface. The positions of the surfaces were always fixed, but the colors were never the same. For this obstacle I used openCV. 
 
 I implemented 5 nodes for this project :
-  - ***auto_scan*** -> This node bring the robotic arm to the working surface. The robot stops moving when it detects all of the cubes.
-  - ***cube_detector*** -> This node the position and the color of the cubes.
+  - ***auto_scan*** -> This node brings the robotic arm to the working surface. The robot stops moving when it detects all of the cubes.
+  - ***cube_detector*** -> This node detects the position and the color of the cubes.
   - ***surface_detector*** -> This node detects the color of the surface.
   - ***closest_cube*** -> This node gives us information about the closest cube to the base of the robot.
-  - ***move_to_cube*** -> This node would be our sorting logic. It gets information from others nodes such as closest cube to the base of the robot, cube colors, cube coordinates and surface color.
+  - ***move_to_cube*** -> This node would be our sorting logic. It gets information from other nodes such as the closest cube to the base of the robot, cube colors, cube coordinates and surface color.
 
 One of the challenges was implementing MoveIt2 to the code. The code isn't ideal because there are occasions that the robot couldn't calculate the movement, but that's why I implemented multiple re-try plans. 
 
